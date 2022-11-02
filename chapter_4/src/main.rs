@@ -31,8 +31,8 @@ mod what_is_ownership {
 
     /// [p. 64](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html#memory-and-allocation):
     /// - What is the name of the special function that Rust calls automatically when a variable
-    ///   goes out of scope?
-    /// - What is this called in C++?
+    ///   goes out of scope? `drop()` `Drop`
+    /// - What is this called in C++? `destructor`, `RAII`
     ///
     /// [p. 65](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html#ways-variables-and-data-interact-move)
     /// What is happening on the stack and on the heap in this code?
@@ -52,6 +52,16 @@ mod what_is_ownership {
     /// What is special about these primitives that make them so quick to copy?
     /// Enter the `Copy` trait.
     fn memory_and_allocation() {
+        #[derive(Clone)]
+        struct X {
+            y: String,
+            z: String,
+        }
+
+        fn xyz(x: X) {
+            let y = x.y;
+        }
+
         // TODO - demo Clone and Copy if there's time
     }
 }
@@ -130,8 +140,8 @@ mod references_and_borrowing {
             let r1 = &s; // no problem
             let r2 = &s; // no problem
 
-            // let r3 = &mut s; // BIG PROBLEM
-            // println!("{}, {}, and {}", r1, r2, r3);
+            let r3 = &mut s; // BIG PROBLEM
+                             //println!("{}, {}, and {}", r1, r2, r3);
         }
     }
 
@@ -139,10 +149,10 @@ mod references_and_borrowing {
     /// [p. 74](https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references)
     ///
     /// Explain what is wrong with this code!
-    fn let_me_dangle() {
-        // let reference_to_nothing = dangle();
-    }
-
+    // fn let_me_dangle() {
+    //     let reference_to_nothing = dangle();
+    // }
+    //
     // fn dangle() -> &String {
     //     let s = String::from("hello");
     //
@@ -221,6 +231,11 @@ mod slice_types {
         good_function_signature(s);
 
         // sad!
-        // bad_function_signature(s); // PROBLEM: I can't use it unless I have a String
+        let x = s.to_string();
+        bad_function_signature(&x); // PROBLEM: I can't use it unless I have a String
+    }
+
+    fn blah(s: String) {
+        for c in s.chars() {}
     }
 }
