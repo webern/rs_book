@@ -1,7 +1,10 @@
 #![allow(dead_code, unused_variables, unused_mut)]
 
+use std::fmt::{Display, Formatter};
+
 fn main() {
     println!("Chapter 5!");
+    use_the_empty_struct();
 }
 
 struct User {
@@ -115,4 +118,49 @@ fn not_interchangeable() {
     // Yes! this works
     use_point(&point);
     use_color(&color);
+}
+
+/// Unit-like structs without any fields:
+struct Hello;
+
+// Cool!, I can impl traits on this empty struct
+impl AsRef<str> for Hello {
+    fn as_ref(&self) -> &str {
+        "Hello"
+    }
+}
+
+impl Display for Hello {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt("World!", f)
+    }
+}
+
+fn use_the_empty_struct() {
+    let h = Hello;
+
+    // Prints "Hello World!"
+    println!("{} {}", h.as_ref(), h)
+}
+
+/// Ownership of struct data, Lifetime **Preview**
+/// [p.87](https://doc.rust-lang.org/book/ch05-01-defining-structs.html#ownership-of-struct-data)
+struct BorrowedData<'a> {
+    email: &'a str,
+    username: &'a str,
+}
+
+fn use_borrowed_data_struct() {
+    // Data is owned by these variables:
+    let email = String::from("foo@example.com");
+    let username = String::from("foo");
+
+    // Assign references to the struct data. Compiler is happy because the lifetime of the variables
+    // is longer/same-as the lifetime of the struct.
+    let borrowed_data = BorrowedData {
+        email: &email,
+        username: &username,
+    };
+
+    println!("{} {}", borrowed_data.email, borrowed_data.username)
 }
