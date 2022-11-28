@@ -1,3 +1,10 @@
+/*!
+
+# Chapter 5: Structs
+
+pp. 83-96 in the 2018 edition paperback.
+
+ */
 #![allow(dead_code, unused_variables, unused_mut)]
 
 use std::fmt::{Display, Formatter};
@@ -164,3 +171,5 @@ fn use_borrowed_data_struct() {
 
     println!("{} {}", borrowed_data.email, borrowed_data.username)
 }
+
+// For pp. 87-96 (end of chapter), just flip through and talk about things you've highlighted.
