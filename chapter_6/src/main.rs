@@ -178,3 +178,18 @@ fn patterns_that_bind_to_values() {
 }
 
 // If let. These two blocks of code are equivalent
+fn if_let() {
+    let value = Some(42);
+    {
+        match value {
+            Some(i) => println!("the value is {}", i),
+            _ => { /* do nothing */ }
+        }
+    }
+
+    {
+        if let Some(i) = value {
+            println!("the value is {}", i);
+        }
+    }
+}
