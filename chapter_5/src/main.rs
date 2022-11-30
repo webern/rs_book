@@ -7,7 +7,7 @@ pp. 83-96 in the 2018 edition paperback.
  */
 #![allow(dead_code, unused_variables, unused_mut)]
 
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 fn main() {
     println!("Chapter 5!");
@@ -87,7 +87,7 @@ struct SuperUser {
 // It would be nice if I could do this, but I can't :(
 // There is an [RFC](https://rust-lang.github.io/rfcs/2528-type-changing-struct-update-syntax.html).
 // fn super_user_from_user(user: User) -> SuperUser {
-//     SuperUser{
+//     SuperUser {
 //         permission_level: 2,
 //         ..user
 //     }
@@ -179,23 +179,30 @@ fn use_borrowed_data_struct() {
 // Instructions: for this example show the compiler error, then implement Debug and Display manually
 // then use the derive macro for Debug
 
+#[derive(Debug)]
 struct PrintMe {
     first_word: String,
     second_word: String,
 }
 
 // This doesn't compile unless we implement Debug and Display
-// fn print_me() {
-//     let value = PrintMe {
-//         first_word: "Hello".to_string(),
-//         second_word: "World".to_string(),
-//     };
-//     // Uses Display
-//     println!("{}", value);
-//
-//     // Uses Debug
-//     println!("{:?}", value);
-// }
+fn print_me() {
+    let value = PrintMe {
+        first_word: "Hello".to_string(),
+        second_word: "World".to_string(),
+    };
+    // Uses Display
+    println!("{}", value);
+
+    // Uses Debug
+    println!("{:?}", value);
+}
+
+impl Display for PrintMe {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.first_word)
+    }
+}
 
 // Different selfs
 
@@ -204,13 +211,16 @@ pub struct WrappedString {
 }
 
 impl WrappedString {
+    /// Associated
     /// Capitalized `Self` represent the type, i.e. `WrappedString`.
+    /// WrappedString::new("blah)
     pub fn new<S: Into<String>>(value: S) -> Self {
         Self {
             value: value.into(),
         }
     }
 
+    /// Method
     /// `&mut self` does a mutable borrow of the instance.
     pub fn mutate(&mut self) {
         self.value.push_str(" foo");
@@ -221,6 +231,7 @@ impl WrappedString {
         println!("{}", self.value)
     }
 
+    /// A move function
     /// `self` "consumes" the instance. i.e. destroys it by borrowing it.
     fn be_like_a_builder(self) -> Self {
         Self {
@@ -228,5 +239,9 @@ impl WrappedString {
         }
     }
 }
-
-// TODO - demonstrate usage?
+//
+// fn foo() {
+//     let x = WrappedString::new("hello");
+//     let y = x.be_like_a_builder();
+//     println!("{}", x.value);
+// }

@@ -102,8 +102,8 @@ fn exhaustive_matches() {
     // Won't compile!
     // let letter = Letter::C;
     // match letter {
-    //     Letters::A => println!("A"),
-    //     Letters::B => println!("B"),
+    //     Letter::A => println!("A"),
+    //     Letter::B => println!("B"),
     //     // oh, no, we haven't covered all cases
     // }
 
