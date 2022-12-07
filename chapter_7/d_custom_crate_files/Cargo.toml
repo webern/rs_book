@@ -3,6 +3,10 @@ name = "d_custom_crate_files"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "weird_file_location_1"
+path = "./weird_file_location_1.rs"
 
-[dependencies]
+[lib]
+name = "weird_file_location_2"
+path = "./weird_file_location_2.rs"
