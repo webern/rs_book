@@ -1,5 +1,7 @@
 #![allow(dead_code, unused_variables, unused_mut, unused_imports)]
 
+use crate::mane::ManeError;
+
 /// # Getting Help from the Compiler (p. 156)
 /// You can use this trick when you don't know the type of something. Annotate a `let` statement
 /// with some type, even though you know it is wrong, then compile. The compiler will tell you
@@ -49,6 +51,8 @@ mod custom_error {
         // actually implement (override) the `source` function.
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
     /// The above error is fine, but it's missing something important. The `Error` trait allows you
     /// to implement a `source` function which returns the underlying error that is being "wrapped".
     /// This allows for a pseudo-stack-trace of errors. Here's how you can implement a more
@@ -89,11 +93,70 @@ mod custom_error {
             self.source.as_ref().map(|e| e.as_ref() as &(dyn Error))
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// An even better Error would give the user some enum to explain the error condition.
+    #[derive(Debug, Clone, Copy)]
+    pub enum Kind {
+        /// The universe collapse.
+        Implosion,
+        /// The universe didn't collapse.
+        HeatDeath,
+    }
+
+    #[derive(Debug)]
+    pub struct BestError {
+        message: String,
+        kind: Kind,
+        source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    }
+
+    impl BestError {
+        /// We give the user a public interface where they can figure out what happened (this is
+        /// like `std::io::Error`)
+        pub fn kind(&self) -> Kind {
+            self.kind
+        }
+    }
+
+    impl Display for BestError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            match self.source.as_ref() {
+                None => Display::fmt(&self.message, f),
+                Some(source) => write!(f, "{}: {}", self.message, source),
+            }
+        }
+    }
+
+    impl Error for BestError {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            self.source.as_ref().map(|e| e.as_ref() as &(dyn Error))
+        }
+    }
 }
 
 /// # The Question Mark Operator (p.160)
 /// What is the `?` operator actually doing?
-mod question_mark_operator {}
+mod question_mark_operator {
+    fn result() -> Result<(), ()> {
+        Err(())
+    }
+
+    // These are the same
+    fn verbose() -> Result<(), ()> {
+        let _ = match result() {
+            Ok(ok) => ok,
+            Err(e) => return Err(e),
+        };
+        Ok(())
+    }
+
+    fn shorthand() -> Result<(), ()> {
+        let _ = result()?;
+        Ok(())
+    }
+}
 
 /// # The Question Mark Operator Calls Into (p.162)
 /// The `?` operator can convert errors if they implement `From`.
@@ -130,19 +193,129 @@ mod question_mark_into_call {
 /// # Errors and the `main` Function (p. 164)
 /// The main function will show an error using `Debug`, which is too bad.
 /// This is why we usually catch the error from a `run` function and display it with `eprintln!()`.
-fn main() {
-    use mane::*;
-    println!("Chapter 9!");
+fn main() -> Result<(), ManeError> {
+    mane::run_program()
 }
 
-mod mane {}
+mod mane {
+    use std::error::Error;
+    use std::fmt::{Debug, Display, Formatter};
+
+    pub fn run_program() -> Result<(), ManeError> {
+        println!("Chapter 9!");
+        Err(ManeError)
+    }
+
+    pub struct ManeError;
+
+    impl Display for ManeError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            Display::fmt("error is displayed", f)
+        }
+    }
+
+    impl Debug for ManeError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            Display::fmt("error is debugged", f)
+        }
+    }
+
+    impl Error for ManeError {}
+}
 
 /// # Custom Types for Validation (p. 167)
 /// In Rust it is idiomatic to prevent a function from accepting bad input by making it impossible
 /// with the type system.
-mod type_system_validation {}
+mod type_system_validation {
+    /// This is a terrible function. It accepts data that can be bad then validates.
+    pub fn bad_guess_between_1_and_10(guess: u8) -> bool {
+        if guess < 1 || guess > 10 {
+            panic!("the guess was '{}' but should be between 1 and 10", guess);
+        }
+        guess == 5
+    }
 
-// TODO - # Demo Snafu
+    /// This is a better design. We create a type that can only ever be valid.
+    pub struct Clamp<const MIN: u8, const MAX: u8>(u8);
+
+    impl<const MIN: u8, const MAX: u8> Clamp<MIN, MAX> {
+        fn new(input: u8) -> Self {
+            if input < MIN {
+                Self(MIN)
+            } else if input > MAX {
+                Self(MAX)
+            } else {
+                Self(input)
+            }
+        }
+    }
+
+    /// Now this function can never accept bad input.
+    pub fn good_guess_between_1_and_10(guess: Clamp<1, 10>) -> bool {
+        guess.0 == 5
+    }
+}
+
+/// # Demo Snafu - Problematic Usage
+/// This is problematic because the enum exposes implementation details in the public interface.
+mod snafu_bad {
+    use snafu::Snafu;
+    use std::path::PathBuf;
+
+    /// Exposes too much information about our implementation details. We need to add a variant
+    /// for any different message or data that we might want.
+    #[derive(Debug, Snafu)]
+    pub enum Error {
+        #[snafu(display("Unable to canonicalize path '{}': {}", path.display(), source))]
+        UnableToOpen {
+            path: PathBuf,
+            source: std::io::Error,
+        },
+
+        #[snafu(display("Failed to so something: {}", source))]
+        Something { source: std::io::Error },
+    }
+}
+
+/// # Demo Snafu - Better Usage
+/// Snafu has a better mode where the snafu enum variants are hidden.
+mod snafu_good {
+    use snafu::Snafu;
+    use std::path::PathBuf;
+
+    /// We have a public wrapper that hides our snafu enum.
+    #[derive(Debug, Snafu)]
+    pub struct Error(PrivateError);
+
+    /// We can do whatever we want with the public interface of our error. For example we can create
+    /// a stable, purpose-build enum for our users.
+    pub enum Kind {
+        Io,
+        Implosion,
+        HeatDeath,
+    }
+
+    impl Error {
+        pub fn kind(&self) -> Kind {
+            match &self.0 {
+                PrivateError::UnableToOpen { .. } | PrivateError::Something { .. } => Kind::Io,
+            }
+        }
+    }
+
+    /// This is kept private.
+    #[derive(Debug, Snafu)]
+    enum PrivateError {
+        #[snafu(display("Unable to canonicalize path '{}': {}", path.display(), source))]
+        UnableToOpen {
+            path: PathBuf,
+            source: std::io::Error,
+        },
+
+        #[snafu(display("Failed to so something: {}", source))]
+        Something { source: std::io::Error },
+    }
+}
 
 // TODO - # Demo Anyhow
 
